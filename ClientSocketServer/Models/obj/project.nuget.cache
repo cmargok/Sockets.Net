@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "UBVyE1O1KH8WrU86u7WUqI8MOhFCiJoR8GvknzenjQQoV2l+f+LcCFp35djPJv/eLxHOmwYYtZBgdqvSTzYyxQ==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\ClientSocketServer\\Models\\Models.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\dykey\\.nuget\\packages\\newtonsoft.json\\13.0.1\\newtonsoft.json.13.0.1.nupkg.sha512"
+  ],
+  "logs": []
+}
