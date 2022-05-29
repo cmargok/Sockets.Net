@@ -16,30 +16,33 @@ namespace Models
     {
         public ServerData ServerData { get; set; }
     }
-    public class ClientsSendListModel : GenericResponse
+    public class ListUsersModel : GenericResponse
     {
         [JsonProperty(PropertyName = "Clients")]
-        public List<ClientModel> _clientes { get; set; }
+        public List<ClientDataModel> _clientes { get; set; }
     }
-    public class ClientModel
+    public class ClientDataModel
     {
         [JsonProperty(PropertyName = "ClientId")]
         public Guid ClientId { get; set; }
 
         [JsonProperty(PropertyName = "ClientName")]
         public string ClientName { get; set; }
+
+        [JsonProperty(PropertyName = "status")]
+        public bool status { get; set; }
     }
-    public class ClientMessage : GenericResponse
+    public class MessageModel : GenericResponse
     {
         [JsonProperty(PropertyName = "from")]
-        public ClientModel clientFrom { get; set; }
+        public ClientDataModel clientFrom { get; set; }
 
         [JsonProperty(PropertyName = "to")]
-        public ClientModel clientTo { get; set; }
+        public ClientDataModel clientTo { get; set; }
 
         [JsonProperty(PropertyName = "Message")]
         public string Message { get; set; }
-        public ClientMessage()
+        public MessageModel()
         {
             Message = "";
 

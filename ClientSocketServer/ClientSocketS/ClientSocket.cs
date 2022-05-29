@@ -17,10 +17,14 @@ namespace ClientSocketS
     {
         AllClientsOnline,
         NewClient_Linked,
-        Incoming_Message,
+        GeneralSvMessage,
         SendingServerDat,
         ClientConnClosed,
+        PrivateUsMessage
     }
+
+ 
+
 
     public class ClientSocket
     {
@@ -28,20 +32,23 @@ namespace ClientSocketS
         private Thread listenThread;
         private ServerData serverData;
         private GenerateClientModel ClientU;
-        CancellationTokenSource cts;
+        private List<ClientDataModel> ListConnectedClients;
+        private CancellationTokenSource cts;
+        private ClientDataModel UserPrivateChat;
+
 
         public ClientSocket(string nameClient)
         {
             try
             {
-                Console.WriteLine("\n*************************************************\n            Configuring Client");              
-                IPHostEntry host = Dns.GetHostEntry("localhost");
-                IPAddress addr = host.AddressList[0];
+                Console.WriteLine("\n*************************************************\n            Configuring Client");
+                IPHostEntry Host = Dns.GetHostEntry(Dns.GetHostName());
+                IPAddress addr = Host.AddressList[Host.AddressList.Length - 1];
                 IPEndPoint endPoint = new IPEndPoint(addr, 4404);
                 clienteSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 Console.WriteLine("         Successful configuration");
                 StartClient(endPoint);
-                Console.WriteLine("     ---------------------------------------");
+                Console.WriteLine(" \n    ---------------------------------------");
                 Console.WriteLine("\n          Successful connection");
                 Connect(nameClient);
             }
@@ -68,20 +75,16 @@ namespace ClientSocketS
                         Console.Write("\r                  {0}    ", i + "%");
                         Thread.Sleep(1);
                     }
+                    connectAttemps = 10;
+
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine();
-                    Console.Write("Unnable to reach conexion to remote server...");            
-                    ClearCurrentConsoleLine(500);
-                    Console.Write("Retrying Connection... -> Attemp #"+connectAttemps );
-                    
-                    ClearCurrentConsoleLine(500);
+                    ClearCurrentConsoleLineNotConexion(connectAttemps);
                     if (!clienteSocket.Connected) connectAttemps++;
                     else connectAttemps = 10;
                 }
             } while (connectAttemps <10);
-            ClearCurrentConsoleLine(10);    
         }   
 
 
@@ -90,14 +93,17 @@ namespace ClientSocketS
             try
             {
                 ClientU = new GenerateClientModel(nameClient);
+                ClientU.status = true;
                 string SendDataToServer = generateBytesToSend(ClientU, Remitente.SendingServerDat, true, "none");
+                ListConnectedClients = null;
                 clienteSocket.Send(Encoding.ASCII.GetBytes(SendDataToServer));
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message + "\nSOURCE\n" + ex.Source + "\nTARGET\n" + ex.TargetSite + "\nSTACKTRACE\n" + ex.StackTrace);
             }
-            FirstConnection();          
+            FirstConnection();
+            Instructions();
              listenThread = new Thread(() => HearingServer(clienteSocket, cts));
              listenThread.Start();
              cts = new CancellationTokenSource();
@@ -122,6 +128,7 @@ namespace ClientSocketS
                 Console.WriteLine("Connected as ->    " + ClientU.ClientName);
                 Console.WriteLine("Client -ID ->" + ClientU.ClientId
                                     + "\n *************************************************\n");
+                
             }
             catch (Exception ex)
             {
@@ -156,16 +163,20 @@ namespace ClientSocketS
 
                     switch (remitenteFromServer)
                     {
+
                         case Remitente.AllClientsOnline:
-                            ClientsSendListModel allcLientsOnline = JsonConvert.DeserializeObject<ClientsSendListModel>(jsonReceived);
+                            ListUsersModel allcLientsOnline = JsonConvert.DeserializeObject<ListUsersModel>(jsonReceived);
+                            ListConnectedClients = new List<ClientDataModel>();
+                            ListConnectedClients = allcLientsOnline._clientes;
                             Console.WriteLine("\n                                                            //--------------USERS ONLINE------------/");
-                            foreach (var client in allcLientsOnline._clientes)
+                            foreach (var client in ListConnectedClients)
                             {
                                 Console.WriteLine("                                                                       -->" + client.ClientName);
                             };
                             break;
+
                         case Remitente.NewClient_Linked:
-                            ClientsSendListModel NewClientConnected = JsonConvert.DeserializeObject<ClientsSendListModel>(jsonReceived);
+                            ListUsersModel NewClientConnected = JsonConvert.DeserializeObject<ListUsersModel>(jsonReceived);
                             Console.WriteLine("\n                                                          --------------NEW USER CONNECTED----------|");
                             foreach (var client in NewClientConnected._clientes)
                             {
@@ -173,20 +184,35 @@ namespace ClientSocketS
                              //   Console.WriteLine("                                                         ->" + client.ClientId);
                             };
                             break;
+
                         case Remitente.ClientConnClosed:
-                            ClientsSendListModel ClientConnClosed = JsonConvert.DeserializeObject<ClientsSendListModel>(jsonReceived);
+                            ListUsersModel ClientConnClosed = JsonConvert.DeserializeObject<ListUsersModel>(jsonReceived);
                             Console.WriteLine("\n                                                                    >-------USER DISCONNECTED-------->");
                             foreach (var client in ClientConnClosed._clientes)
                             {
                                 Console.WriteLine("                                                                  >--->" + client.ClientName);
                             };
                             break;
-                        case Remitente.Incoming_Message:
-                            ClientMessage messageReceived = JsonConvert.DeserializeObject<ClientMessage>(jsonReceived);
-                            Console.WriteLine("\n                        *-* FROM -> " + messageReceived.clientFrom.ClientName);
-                            Console.WriteLine("                                 - - > " + messageReceived.Message+"\n");
 
+                        case Remitente.GeneralSvMessage:
+                            if (ClientU.status)
+                            {
+                                MessageModel messageReceived = JsonConvert.DeserializeObject<MessageModel>(jsonReceived);
+                                Console.WriteLine("\n                      *-* FROM -> " + messageReceived.clientFrom.ClientName);
+                                Console.WriteLine("                               - - > " + messageReceived.Message + "\n");
+                            }                  
                             break;
+
+                        case Remitente.PrivateUsMessage:
+                            MessageModel privateMessage = JsonConvert.DeserializeObject<MessageModel>(jsonReceived);
+                            ClientU.status = false;
+                            UserPrivateChat = privateMessage.clientFrom;
+                                Console.ForegroundColor = ConsoleColor.Cyan;
+                                Console.WriteLine("\n                        *-* PRIVATE - FROM -> " + privateMessage.clientFrom.ClientName);
+                                Console.WriteLine("                                 - - > " + privateMessage.Message + "\n");
+                            Console.ForegroundColor = ConsoleColor.White;
+                            break;
+
                         default: 
 
                             break;
@@ -217,41 +243,139 @@ namespace ClientSocketS
 
         }
 
+        private void disconnectinPrivateChat(MessageModel message)
+        {
+            Console.WriteLine("Disconnecting From private chat ");
+            message = new MessageModel();
+            message.Message = ClientU.ClientName + "It's Free to talk in a private chat";
+            ClientU.status = true;
+            message.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName, status = ClientU.status };
+            message.clientTo = new ClientDataModel { ClientId = serverData.ServerId, ClientName = serverData.Name };
+            var sendMessage = generateBytesToSend(message, Remitente.PrivateUsMessage, true, "none");
+            clienteSocket.Send(Encoding.ASCII.GetBytes(sendMessage));
+        }
+           
 
 
         public void SendMessage(CancellationTokenSource ctts)
         {
-            ClientMessage _clientMessage;
+            MessageModel _clientMessage = new MessageModel(); ;
             while (true)
             {
                 try
                 {
                     Thread.Sleep(1000);
-                    Console.WriteLine("Nuevo mensaje...");
-                    var meme = Console.ReadLine();
-                    if (meme == "exit" || meme == "EXIT" || meme == "Exit")
+                    Console.WriteLine("New Message...");
+                    var messageFromConsole = Console.ReadLine();
+
+                    if (ClientU.status == false)
                     {
-                        _clientMessage = new ClientMessage();
-                        _clientMessage.Message = "Close connection";
-                        _clientMessage.clientFrom = new ClientModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName };
-                        var sendprueba = generateBytesToSend(_clientMessage, Remitente.ClientConnClosed, true, "none");
-                        clienteSocket.Send(Encoding.ASCII.GetBytes(sendprueba));
-                        clienteSocket.Shutdown(SocketShutdown.Both);
-                        clienteSocket.Close();
-                        break;
+                        if (messageFromConsole.Length > 1 && messageFromConsole.Substring(0, 2) == "-c")
+                        {
+
+                            if (UserPrivateChat != null)
+                            {
+                                disconnectinPrivateChat(_clientMessage);
+
+                            }
+
+                            else
+                            {
+                                Console.WriteLine("                  There's no private chat running....");
+                            }
+
+                        }
+                        else if (messageFromConsole == "exit" || messageFromConsole == "EXIT" || messageFromConsole == "Exit")
+                        {
+
+                            _clientMessage.Message = "Close connection";
+                            _clientMessage.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName };
+                            var sendprueba = generateBytesToSend(_clientMessage, Remitente.ClientConnClosed, true, "none");
+                            clienteSocket.Send(Encoding.ASCII.GetBytes(sendprueba));
+                            clienteSocket.Shutdown(SocketShutdown.Both);
+                            clienteSocket.Close();
+                            break;
+                        }
+
+                        else
+                        {
+                            _clientMessage.Message = messageFromConsole;
+                            _clientMessage.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName, status = false };
+                            _clientMessage.clientTo = UserPrivateChat;
+                            var sendMessage = generateBytesToSend(_clientMessage, Remitente.PrivateUsMessage, true, "none");
+                            clienteSocket.Send(Encoding.ASCII.GetBytes(sendMessage));
+                            ClientU.status = false;
+                        }
+
+                        
                     }
-                    else
+                    else if (ClientU.status == true)
                     {
-                        _clientMessage = new ClientMessage();
-                        _clientMessage.Message = meme;
-                        _clientMessage.clientFrom = new ClientModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName };
-                        var sendprueba = generateBytesToSend(_clientMessage, Remitente.Incoming_Message, true, "none");
-                        clienteSocket.Send(Encoding.ASCII.GetBytes(sendprueba));
+
+                        if (messageFromConsole.Length > 0 && messageFromConsole[0] == '-')
+                        {
+
+                            if (messageFromConsole.Length > 4 && messageFromConsole.Substring(0, 4) == "-n -" && ClientU.status == true)
+                            {
+
+                                var newPrivateChat = messageFromConsole.Split('-');
+                                newPrivateChat[2] = newPrivateChat[2].ToUpper();
+                                Console.WriteLine("Trying connection with -> " + newPrivateChat[2]);
+                                try
+                                {
+                                    UserPrivateChat = ListConnectedClients.Find(z => z.ClientName == newPrivateChat[2]);
+                                }
+                                catch (Exception ex)
+                                {
+                                    UserPrivateChat = null;
+                                }
+
+                                if (UserPrivateChat != null)
+                                {
+                                    _clientMessage.Message = "new private chat initilized with you";
+                                    _clientMessage.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName, status = false };
+                                    _clientMessage.clientTo = UserPrivateChat;
+                                    var sendMessage = generateBytesToSend(_clientMessage, Remitente.PrivateUsMessage, true, "none");
+                                    clienteSocket.Send(Encoding.ASCII.GetBytes(sendMessage));
+                                    ClientU.status = false;
+                                    Console.ForegroundColor = ConsoleColor.Cyan;
+                                    Console.WriteLine("Connetion Successfull");
+                                    Console.ForegroundColor = ConsoleColor.White;
+                                }
+                                else
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Red;
+                                    Console.WriteLine("User not Connected or not Found, try again...\n");
+                                    Console.ForegroundColor = ConsoleColor.White;
+                                }
+
+
+                            }
+
+                        }
+                        else if (messageFromConsole == "exit" || messageFromConsole == "EXIT" || messageFromConsole == "Exit")
+                        {
+
+                            _clientMessage.Message = "Close connection";
+                            _clientMessage.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName };
+                            var sendprueba = generateBytesToSend(_clientMessage, Remitente.ClientConnClosed, true, "none");
+                            clienteSocket.Send(Encoding.ASCII.GetBytes(sendprueba));
+                            clienteSocket.Shutdown(SocketShutdown.Both);
+                            clienteSocket.Close();
+                            break;
+                        }
+                        else
+                        {
+                            _clientMessage.Message = messageFromConsole;
+                            _clientMessage.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName };
+                            var sendprueba = generateBytesToSend(_clientMessage, Remitente.GeneralSvMessage, true, "none");
+                            clienteSocket.Send(Encoding.ASCII.GetBytes(sendprueba));
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message + "\nSOURCE\n" + ex.Source + "\nTARGET\n" + ex.TargetSite + "\nSTACKTRACE\n" + ex.StackTrace);
+                    Console.WriteLine(ex.Message + "\nSTACKTRACE\n" + ex.StackTrace);
                 }
                 
             }
@@ -262,7 +386,7 @@ namespace ClientSocketS
 
         private string generateBytesToSend(object client, Remitente remitente, bool success, string Error, Socket to = null)
         {
-            ClientsSendListModel SendModelClientList;
+            ListUsersModel SendModelClientList;
 
             try
             {
@@ -271,11 +395,11 @@ namespace ClientSocketS
 
                     //recibiendo informacion del cliente para configurar primera conexion
                     case Remitente.SendingServerDat:
-                        List<ClientModel> tempClientList = new List<ClientModel>();
-                        var castingTocClientModel = (GenerateClientModel)client;
-                        ClientModel clientTosend = new ClientModel { ClientId = castingTocClientModel.ClientId, ClientName = castingTocClientModel.ClientName };
+                        List<ClientDataModel> tempClientList = new List<ClientDataModel>();
+                        var castingTocClientModel = (GenerateClientModel)client;                        
+                        ClientDataModel clientTosend = new ClientDataModel { ClientId = castingTocClientModel.ClientId, ClientName = castingTocClientModel.ClientName, status=ClientU.status };
                         tempClientList.Add(clientTosend);
-                        SendModelClientList = new ClientsSendListModel();
+                        SendModelClientList = new ListUsersModel();
                         SendModelClientList._clientes = tempClientList;
                         SendModelClientList.Succcess = true;
                         SendModelClientList.Error = "none";
@@ -287,8 +411,8 @@ namespace ClientSocketS
 
                     //enviando lista de clientes conectados a todos los clientes conectados
                     case Remitente.AllClientsOnline:
-                        SendModelClientList = new ClientsSendListModel();
-                        List<ClientModel> tempAllClientOnlineList = (List<ClientModel>)client;
+                        SendModelClientList = new ListUsersModel();
+                        List<ClientDataModel> tempAllClientOnlineList = (List<ClientDataModel>)client;
                         SendModelClientList._clientes = tempAllClientOnlineList;
                         SendModelClientList.Succcess = success;
                         SendModelClientList.Error = Error;
@@ -301,9 +425,9 @@ namespace ClientSocketS
                     //Definiendo que hacer cuando llega un nuevo cliente
                     // enviando la notificacion del nuevo cliente a los clientes que estan conectados
                     case Remitente.NewClient_Linked:
-                        SendModelClientList = new ClientsSendListModel();
-                        List<ClientModel> tempoUniclient = new List<ClientModel>();
-                        var tempClientLists = (List<ClientModel>)client;
+                        SendModelClientList = new ListUsersModel();
+                        List<ClientDataModel> tempoUniclient = new List<ClientDataModel>();
+                        var tempClientLists = (List<ClientDataModel>)client;
                         SendModelClientList._clientes = tempClientLists;
                         SendModelClientList.Succcess = success;
                         SendModelClientList.Error = Error;
@@ -312,9 +436,10 @@ namespace ClientSocketS
                         SendModelClientList.NumberOfRecords = SendModelClientList._clientes.Count;
                         return JsonConvert.SerializeObject(SendModelClientList);
 
-                     case Remitente.Incoming_Message:
-                         var tempMessage = (ClientMessage)client;
-                        tempMessage.clientTo = new ClientModel { ClientId= serverData.ServerId, ClientName= serverData.Name}; 
+                     case Remitente.GeneralSvMessage:
+                       
+                         var tempMessage = (MessageModel)client;
+                        tempMessage.clientTo = new ClientDataModel { ClientId= serverData.ServerId, ClientName= serverData.Name}; 
                          tempMessage.Succcess = success;
                         tempMessage.Error = Error;
                         tempMessage.ErrorDetail = "";
@@ -323,14 +448,23 @@ namespace ClientSocketS
                          return JsonConvert.SerializeObject(tempMessage);
                
                     case Remitente.ClientConnClosed:
-                        var CloseConnection= (ClientMessage)client;
-                        CloseConnection.clientTo = new ClientModel { ClientId = new Guid(), ClientName = "Client-Closed" };
+                        var CloseConnection= (MessageModel)client;
+                        CloseConnection.clientTo = new ClientDataModel { ClientId = new Guid(), ClientName = "Client-Closed" };
                         CloseConnection.Succcess = success;
                         CloseConnection.Error = Error;
                         CloseConnection.ErrorDetail = "Client has closed the connection to server";
                         CloseConnection.remitente = remitente.ToString();
                         CloseConnection.NumberOfRecords = 1;
                         return JsonConvert.SerializeObject(CloseConnection);
+
+                    case Remitente.PrivateUsMessage:
+                        var tempPrivateMessage = (MessageModel)client;
+                        tempPrivateMessage.Succcess = success;
+                        tempPrivateMessage.Error = Error;
+                        tempPrivateMessage.ErrorDetail = "";
+                        tempPrivateMessage.remitente = remitente.ToString();
+                        tempPrivateMessage.NumberOfRecords = 1;
+                        return JsonConvert.SerializeObject(tempPrivateMessage);
                     default:
                         client = null;                        
                         return null;
@@ -343,13 +477,31 @@ namespace ClientSocketS
                 return null;
             }
         }
-        public void ClearCurrentConsoleLine(int time)
+        private void ClearCurrentConsoleLineNotConexion(int connectAttemps)
         {
-            Thread.Sleep(time);
-            int currentLineCursor = Console.CursorTop;
+            Console.Write("   Unnable to reach conexion to remote server...");
+            Thread.Sleep(2000);
             Console.SetCursorPosition(0, Console.CursorTop);
             Console.Write(new string(' ', Console.WindowWidth));
-            Console.SetCursorPosition(0, currentLineCursor);
+            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.Write("       Retrying Connection... -> Attemp #" + connectAttemps);
+            Thread.Sleep(2000);
+            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.Write(new string(' ', Console.WindowWidth));
+            Console.SetCursorPosition(0, Console.CursorTop);
         }
+        private void Instructions()
+        {
+            Console.WriteLine("*******************************************************\n" +
+                "                     INSTRUCTIONS\n" +
+                "*******************************************************\n" +
+                "-n -username    // to init a private conversation\n" +
+                "-c              // to close the actual private chat\n" +
+                "exit            // to close sesion\n" +
+                "*********************************************************** \n" +
+                "------------------------------------------------------------------------------------------------\n");
+
+        }
+
     }
 }

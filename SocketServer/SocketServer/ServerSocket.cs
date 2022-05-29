@@ -15,9 +15,10 @@ namespace SocketServer
         {
             AllClientsOnline,
             NewClient_Linked,
-            Incoming_Message,
+            GeneralSvMessage,
             SendingServerDat,
             ClientConnClosed,
+            PrivateUsMessage
         }
         public class ServerSocket
         {
@@ -33,11 +34,12 @@ namespace SocketServer
             {
             try
                 {
-                    IPHostEntry host = Dns.GetHostEntry("localhost");
-                    IPAddress addr = host.AddressList[0];
+                   // IPHostEntry host = Dns.GetHostEntry("0.0.0.0");
+                    IPAddress addr = IPAddress.Parse("0.0.0.0");
                     IPEndPoint endPoint = new IPEndPoint(addr, 4404);
 
                     socketServer = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    Console.WriteLine("made by Ing. Kevin camargo");
                     Console.WriteLine("\n********************************************\n            Configuring Server");                    
                     usersTable = new Hashtable();
                     Server_Id = Guid.NewGuid();
@@ -98,13 +100,13 @@ namespace SocketServer
                         {
                             break;
                         }
-                        else if (received is ClientMessage)
+                        else if (received is MessageModel)
                         {
-                            var message = (ClientMessage)received;
+                            var message = (MessageModel)received;
 
                             if (message.remitente == Remitente.ClientConnClosed.ToString())
                             {
-                                Console.WriteLine("Cliente Disconnected -> "+ message.clientFrom.ClientName );
+                                Console.WriteLine("\n**** -> Cliente Disconnected -> "+ message.clientFrom.ClientName );
                                 var clientT = message.clientFrom;
                                 this.BroadCast(client._clientes[0], true);
                                 usersTable.Remove(client._clientes[0]);
@@ -123,8 +125,6 @@ namespace SocketServer
                                 else
                                 {
                                     Console.WriteLine("Mensaje Privado");
-                                   // Console.WriteLine("from :" + message.clientFrom.ClientName + " ||| to : " + message.clientTo.ClientName);
-                                   // Console.WriteLine("mensaje: ->>" + "**********");
                                     SendMessage(message, false);
                                 }
                             }
@@ -139,7 +139,7 @@ namespace SocketServer
 
 
             //Group A functions
-            private ClientsSendListModel ResponseToNewClientConnection(Socket NewClientConnected)
+            private ListUsersModel ResponseToNewClientConnection(Socket NewClientConnected)
             {
                 object received;
                 try
@@ -151,8 +151,8 @@ namespace SocketServer
                         string SendFirstData = generateBytesToSend(serverData, Remitente.SendingServerDat, true, "none");
                         NewClientConnected.Send(Encoding.ASCII.GetBytes(SendFirstData));
 
-                    } while (!(received is ClientsSendListModel));
-                    return (ClientsSendListModel)received;
+                    } while (!(received is ListUsersModel));
+                    return (ListUsersModel)received;
                 }
                 catch (Exception ex)
                 {
@@ -162,20 +162,20 @@ namespace SocketServer
             }
 
 
-        private void SendMessage(ClientMessage _clienteSendModel, bool toALL)
+        private void SendMessage(MessageModel _clienteSendModel, bool toALL)
         {
 
             //aqui debo especificar si el mensaje es all
-            ClientModel tmpUser;
+            ClientDataModel tmpUser;
             if (toALL)
             {
                
                 foreach (DictionaryEntry dictionaryEntry in this.usersTable)
                 {
-                    tmpUser = (ClientModel)dictionaryEntry.Key;
+                    tmpUser = (ClientDataModel)dictionaryEntry.Key;
                     if (tmpUser.ClientId != _clienteSendModel.clientFrom.ClientId)
                     {
-                        this.Send((Socket)dictionaryEntry.Value, _clienteSendModel, Remitente.Incoming_Message);
+                        this.Send((Socket)dictionaryEntry.Value, _clienteSendModel, Remitente.GeneralSvMessage);
                        
                     }
                 }
@@ -185,11 +185,11 @@ namespace SocketServer
               
                 foreach (DictionaryEntry dictionaryEntry in this.usersTable)
                 {
-                    tmpUser = (ClientModel)dictionaryEntry.Key;
+                    tmpUser = (ClientDataModel)dictionaryEntry.Key;
 
                     if (tmpUser.ClientId == _clienteSendModel.clientTo.ClientId)
                     {
-                        this.Send((Socket)dictionaryEntry.Value, _clienteSendModel, Remitente.Incoming_Message);
+                        this.Send((Socket)dictionaryEntry.Value, _clienteSendModel, Remitente.PrivateUsMessage);
                         break;
                     }
                 }
@@ -205,7 +205,7 @@ namespace SocketServer
                 foreach (DictionaryEntry dictionaryEntry in this.usersTable)
                 {
 
-                    if ((ClientModel)client != dictionaryEntry.Key)
+                    if ((ClientDataModel)client != dictionaryEntry.Key)
                     {
                         this.Send((Socket)dictionaryEntry.Value, client, Remitente.NewClient_Linked);
                     }
@@ -216,7 +216,7 @@ namespace SocketServer
                 foreach (DictionaryEntry dictionaryEntry in this.usersTable)
                 {
 
-                    if ((ClientModel)client != dictionaryEntry.Key)
+                    if ((ClientDataModel)client != dictionaryEntry.Key)
                     {
                         this.Send((Socket)dictionaryEntry.Value, client, Remitente.ClientConnClosed);
                     }
@@ -229,10 +229,10 @@ namespace SocketServer
             {
                 //Creating a list with all the clients
 
-                List<ClientModel> ClientsONLINE = new List<ClientModel>();
+                List<ClientDataModel> ClientsONLINE = new List<ClientDataModel>();
                 foreach (DictionaryEntry dictionaryEntry in this.usersTable)
                 {
-                    var dictionaryKeyClient = (ClientModel)dictionaryEntry.Key;
+                    var dictionaryKeyClient = (ClientDataModel)dictionaryEntry.Key;
 
                     ClientsONLINE.Add(dictionaryKeyClient);
                 }
@@ -249,7 +249,7 @@ namespace SocketServer
                 string sendDataClient;
                 try
                 {
-                    List<ClientModel> ListOfClientsModel = new List<ClientModel>();
+                    List<ClientDataModel> ListOfClientsModel = new List<ClientDataModel>();
 
                     if (remitente == Remitente.AllClientsOnline)
                     {
@@ -258,7 +258,7 @@ namespace SocketServer
                     }
                     else if (remitente == Remitente.NewClient_Linked)
                     {
-                        var moment2 = (ClientModel)client;
+                        var moment2 = (ClientDataModel)client;
                         ListOfClientsModel.Add(moment2);
                         sendDataClient = this.generateBytesToSend(ListOfClientsModel, remitente, false, "none");
                         socket.Send(Encoding.ASCII.GetBytes(sendDataClient));
@@ -266,18 +266,26 @@ namespace SocketServer
                     }
                     else if (remitente == Remitente.ClientConnClosed) 
                     { 
-                        var close = (ClientModel)client;
+                        var close = (ClientDataModel)client;
                         ListOfClientsModel.Add(close);
                         sendDataClient = this.generateBytesToSend(ListOfClientsModel, remitente, false, "none");
                         socket.Send(Encoding.ASCII.GetBytes(sendDataClient));
-                    }else if(remitente == Remitente.Incoming_Message)
+
+                    }else if(remitente == Remitente.GeneralSvMessage)
                     {
-                            var toSend = (ClientMessage)client;
+                            var toSend = (MessageModel)client;
                             sendDataClient = this.generateBytesToSend(toSend, remitente, false, "none");
                             socket.Send(Encoding.ASCII.GetBytes(sendDataClient));
 
                     }
+                else if (remitente == Remitente.PrivateUsMessage)
+                {
+                    var toSend = (MessageModel)client;
+                    sendDataClient = this.generateBytesToSend(toSend, remitente, false, "none");
+                    socket.Send(Encoding.ASCII.GetBytes(sendDataClient));
+
                 }
+            }
                 catch (Exception ex)
                 {
                     sendDataClient = this.generateBytesToSend(client, remitente, false, "wrong-data");
@@ -290,7 +298,7 @@ namespace SocketServer
 
             private string generateBytesToSend(object client, Remitente remitente, bool success, string Error, Socket to = null)
             {
-                ClientsSendListModel ListClients;
+                ListUsersModel ListClients;
                 try
                 {
                     switch (remitente)
@@ -310,8 +318,8 @@ namespace SocketServer
 
 
                         case Remitente.AllClientsOnline:
-                            ListClients = new ClientsSendListModel();
-                            List<ClientModel> tempClientList = (List<ClientModel>)client;
+                            ListClients = new ListUsersModel();
+                            List<ClientDataModel> tempClientList = (List<ClientDataModel>)client;
                             ListClients._clientes = tempClientList;
                             ListClients.Succcess = success;
                             ListClients.Error = Error;
@@ -322,8 +330,8 @@ namespace SocketServer
 
 
                         case Remitente.ClientConnClosed:
-                            ListClients = new ClientsSendListModel();
-                            var tempClientgone = (List<ClientModel>)client;
+                            ListClients = new ListUsersModel();
+                            var tempClientgone = (List<ClientDataModel>)client;
                             ListClients._clientes = tempClientgone;
                             ListClients.Succcess = success;
                             ListClients.Error = Error;
@@ -334,8 +342,8 @@ namespace SocketServer
 
 
                         case Remitente.NewClient_Linked:
-                            ListClients = new ClientsSendListModel();
-                            var tempClientLists = (List<ClientModel>)client;
+                            ListClients = new ListUsersModel();
+                            var tempClientLists = (List<ClientDataModel>)client;
                             ListClients._clientes = tempClientLists;
                             ListClients.Succcess = success;
                             ListClients.Error = Error;
@@ -345,9 +353,9 @@ namespace SocketServer
                             return JsonConvert.SerializeObject(ListClients);
 
 
-                        case Remitente.Incoming_Message:
-                             var tempMessage = (ClientMessage)client;
-                             ClientMessage clientMessage = tempMessage;
+                        case Remitente.GeneralSvMessage:
+                             var tempMessage = (MessageModel)client;
+                             MessageModel clientMessage = tempMessage;
                             clientMessage.Succcess = success;
                             clientMessage.Error = Error;
                             clientMessage.ErrorDetail = "";
@@ -355,8 +363,18 @@ namespace SocketServer
                             clientMessage.NumberOfRecords = 1;
                              return JsonConvert.SerializeObject(clientMessage);
 
+                    case Remitente.PrivateUsMessage:
+                        var tempPrivateMessage = (MessageModel)client;
+                        MessageModel privateMessage = tempPrivateMessage;
+                        privateMessage.Succcess = success;
+                        privateMessage.Error = Error;
+                        privateMessage.ErrorDetail = "";
+                        privateMessage.remitente = remitente.ToString();
+                        privateMessage.NumberOfRecords = 1;
+                        return JsonConvert.SerializeObject(privateMessage);
 
-                        default:
+
+                    default:
                             client = null;
                             return null;
                     }
@@ -389,13 +407,13 @@ namespace SocketServer
                 else
                 {
                     Console.WriteLine("ya valimos");
-                    ClientMessage clientMessage = JsonConvert.DeserializeObject<ClientMessage>(dataClient);
+                    MessageModel clientMessage = JsonConvert.DeserializeObject<MessageModel>(dataClient);
                     return clientMessage;
                 }
 
                 if (FirstConnection)
                     {
-                        ClientsSendListModel firstConnection = JsonConvert.DeserializeObject<ClientsSendListModel>(dataClient);
+                        ListUsersModel firstConnection = JsonConvert.DeserializeObject<ListUsersModel>(dataClient);
                         Console.WriteLine("          Connection Succes : " + firstConnection.Succcess);
                         foreach (var client in firstConnection._clientes)
                         {
@@ -407,7 +425,7 @@ namespace SocketServer
                     else
                     {                    
                         
-                        ClientMessage clientMessage = JsonConvert.DeserializeObject<ClientMessage>(dataClient);                       
+                        MessageModel clientMessage = JsonConvert.DeserializeObject<MessageModel>(dataClient);                       
                         return clientMessage;                   
                        
                     }
