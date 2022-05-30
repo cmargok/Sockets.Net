@@ -32,8 +32,8 @@ namespace ClientSocketS
             welcome[2] = "*******************TO***********************";
             welcome[3] = "**************.NET SERVER*******************";
             welcome[4] = "********************************************";
-            welcome[5] = "*************VERSION 0.9.1******************";
-            welcome[6] = "*******MAY - 29 - 2022 04:22 AM ************";
+            welcome[5] = "*************VERSION 0.9.4******************";
+            welcome[6] = "*******MAY - 30 - 2022 03:22 AM ************";
             welcome[7] = "********************************************";
             welcome[8] = "********made by Ing. Kevin camargo**********";
             welcome[9] = "********************************************";
@@ -46,7 +46,14 @@ namespace ClientSocketS
             Thread.Sleep(time * 4);
             Console.Clear();
 
-            ClientSocket client = new(name);
+            try
+            {
+                ClientSocket client = new(name);
+            }catch(Exception ex)
+            {
+                Console.WriteLine("-");
+            }
+            
         }
         
     }

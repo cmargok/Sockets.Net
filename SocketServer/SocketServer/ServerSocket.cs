@@ -18,13 +18,15 @@ namespace SocketServer
             GeneralSvMessage,
             SendingServerDat,
             ClientConnClosed,
-            PrivateUsMessage
-        }
+            PrivateUsMessage,
+            requesttToServer
+    }
         public class ServerSocket
         {
             private Socket socketServer;
             private Thread ListeningThread;
             private Hashtable usersTable;
+            private Dictionary<Guid, Guid> ListUsersInPrivateChat;
             private Guid Server_Id;
             private ServerData serverData;
         /*
@@ -34,7 +36,6 @@ namespace SocketServer
             {
             try
                 {
-                   // IPHostEntry host = Dns.GetHostEntry("0.0.0.0");
                     IPAddress addr = IPAddress.Parse("0.0.0.0");
                     IPEndPoint endPoint = new IPEndPoint(addr, 4404);
 
@@ -42,6 +43,7 @@ namespace SocketServer
                     Console.WriteLine("made by Ing. Kevin camargo");
                     Console.WriteLine("\n********************************************\n            Configuring Server");                    
                     usersTable = new Hashtable();
+                    ListUsersInPrivateChat = new Dictionary<Guid, Guid>();
                     Server_Id = Guid.NewGuid();
                     serverData = new ServerData { ServerId = Server_Id,  Name = ".NET SERVER", };
                     socketServer.Bind(endPoint);
@@ -104,30 +106,99 @@ namespace SocketServer
                         {
                             var message = (MessageModel)received;
 
-                            if (message.remitente == Remitente.ClientConnClosed.ToString())
-                            {
-                                Console.WriteLine("\n**** -> Cliente Disconnected -> "+ message.clientFrom.ClientName );
-                                var clientT = message.clientFrom;
-                                this.BroadCast(client._clientes[0], true);
-                                usersTable.Remove(client._clientes[0]);
-                                NewClientConnected.Close();
-                                break;
+                        if (message.remitente == Remitente.ClientConnClosed.ToString())
+                        {
+                            Console.WriteLine("\n**** -> USER DISCONNECTED -> " + message.clientFrom.ClientName);
+                            var clientT = message.clientFrom;
+                            this.BroadCast(client._clientes[0], true);
+                            usersTable.Remove(client._clientes[0]);
+                            this.SendAllUsersToClient(NewClientConnected);
+                            NewClientConnected.Close();
+                            break;
                         }
-                            else
-                            {
-                                if(message.clientTo.ClientId == serverData.ServerId)
-                                    {
-                                        Console.WriteLine("Mensaje Para todos los usuarios -->"); 
-                                        Console.WriteLine("from :" + message.clientFrom.ClientName + " ||| to ALL");
-                                        //Console.WriteLine("mensaje: ->>" + message.Message);
-                                        SendMessage(message, true);
-                                }
-                                else
+
+                        else if (message.remitente == Remitente.PrivateUsMessage.ToString())
+                        {
+                            
+                            
+                                if (message.Message.Length >0 && message.Message[0] == '?')
                                 {
-                                    Console.WriteLine("Mensaje Privado");
-                                    SendMessage(message, false);
+                                    var newPrivateChat = message.Message.Split('|');
+                                    if (newPrivateChat[2].Substring(0, 2) == "-c")
+                                    {
+                                      
+                                        Console.ForegroundColor = ConsoleColor.Blue;
+                                        Console.WriteLine("Private Chat Dispose Request");
+                                        Console.ForegroundColor = ConsoleColor.White;                                     
+                                        message.Message = "Private Chat Disposed";                                       
+                                        message.clientFrom.status = true;
+                                        message.clientTo.status = true;
+
+                                        SendMessage(message, false, true);
+                                        message.Message = newPrivateChat[1] + " " + newPrivateChat[3];
+                                        SendMessage(message, false);
+                                        ListUsersInPrivateChat.Remove(message.clientTo.ClientId);
+                                        Console.ForegroundColor = ConsoleColor.Green;
+                                        Console.WriteLine("Private Chat Disposed");
+                                        Console.ForegroundColor = ConsoleColor.White;
+                                    }    
+                                    
                                 }
-                            }
+                                else  if (message.Message.Length>0 && message.Message[0] == '*')
+                                {
+                                        Console.ForegroundColor = ConsoleColor.Blue;
+                                        Console.WriteLine("New Private Chat Request");
+                                        Console.ForegroundColor = ConsoleColor.White;
+
+                                    if (!ListUsersInPrivateChat.ContainsKey(message.clientTo.ClientId) && !ListUsersInPrivateChat.ContainsValue(message.clientTo.ClientId))
+                                    {                                        
+                                        var mm = message.Message;
+                                        message.Message = mm;
+                                        ListUsersInPrivateChat.Add(message.clientTo.ClientId, message.clientFrom.ClientId);
+                                        message.clientTo.status = false;
+                                        ResponseRequest(message, NewClientConnected, true);
+                                        message.Message = mm;
+                                        SendMessage(message, false);
+                                        Console.ForegroundColor = ConsoleColor.Green;
+                                        Console.WriteLine("Guaranteed");
+                                        Console.ForegroundColor = ConsoleColor.White;
+                                     }
+                                    else
+                                    {
+                                        message.Message = "User is not available right now";
+                                        message.clientFrom.status = true;
+                                        var changingFrom = message.clientFrom;
+                                        message.clientFrom = message.clientTo;
+                                        message.clientTo = changingFrom;
+                                        message.ErrorDetail = "User is not available right now";
+                                        message.Succcess = false;
+                                        ResponseRequest(message, NewClientConnected, false);
+                                        SendMessage(message, false);
+                                        Console.ForegroundColor = ConsoleColor.Red;
+                                        Console.WriteLine("Denied");
+                                        Console.ForegroundColor = ConsoleColor.White;
+
+                                    }
+                                }
+                              
+                                else if (message.Message.Length > 0)
+                                {
+                                    message.clientTo.status = false;
+                                    SendMessage(message, false);                                   
+                                    Console.WriteLine("Private Message");
+                                }
+
+                               
+
+                            
+                        }
+                        else if (message.clientTo.ClientId == serverData.ServerId)
+                        {
+                            Console.WriteLine("To ALL --> From --> " + message.clientFrom.ClientName);
+                            //Console.WriteLine("mensaje: ->>" + message.Message);
+                            SendMessage(message, true);
+                        }
+                        
                         }
                     }
                 }
@@ -136,7 +207,7 @@ namespace SocketServer
                      Console.WriteLine(ex.Message + "\nSOURCE\n" + ex.Source + "\nTARGET\n" + ex.TargetSite + "\nSTACKTRACE\n" + ex.StackTrace); 
                 }
             }
-
+            
 
             //Group A functions
             private ListUsersModel ResponseToNewClientConnection(Socket NewClientConnected)
@@ -161,8 +232,11 @@ namespace SocketServer
                 }
             }
 
-
-        private void SendMessage(MessageModel _clienteSendModel, bool toALL)
+        private void ResponseRequest(MessageModel response, Socket socket, bool success)
+        {
+            this.Send(socket, response, Remitente.requesttToServer, success);
+        }
+        private void SendMessage(MessageModel _clienteSendModel, bool toALL, bool msgpri = false)
         {
 
             //aqui debo especificar si el mensaje es all
@@ -175,27 +249,68 @@ namespace SocketServer
                     tmpUser = (ClientDataModel)dictionaryEntry.Key;
                     if (tmpUser.ClientId != _clienteSendModel.clientFrom.ClientId)
                     {
-                        this.Send((Socket)dictionaryEntry.Value, _clienteSendModel, Remitente.GeneralSvMessage);
+                        this.Send((Socket)dictionaryEntry.Value, _clienteSendModel, Remitente.GeneralSvMessage, true);
                        
                     }
                 }
             }
-            else
+            else if (msgpri)
             {
-              
+                bool from = false;
+                bool to = false;
                 foreach (DictionaryEntry dictionaryEntry in this.usersTable)
                 {
                     tmpUser = (ClientDataModel)dictionaryEntry.Key;
 
                     if (tmpUser.ClientId == _clienteSendModel.clientTo.ClientId)
                     {
-                        this.Send((Socket)dictionaryEntry.Value, _clienteSendModel, Remitente.PrivateUsMessage);
+                        to = true;
+                        this.Send((Socket)dictionaryEntry.Value, _clienteSendModel, Remitente.PrivateUsMessage, true);
+                        
+                    }
+                    else if (tmpUser.ClientId == _clienteSendModel.clientFrom.ClientId)
+                    {
+                        from = true;
+                        this.Send((Socket)dictionaryEntry.Value, _clienteSendModel, Remitente.PrivateUsMessage, true);
+                        
+                    }
+
+                    if(from && to)
+                    {
+                      
                         break;
                     }
                 }
             }
-        }
+            else 
+            {
 
+                foreach (DictionaryEntry dictionaryEntry in this.usersTable)
+                {
+                    tmpUser = (ClientDataModel)dictionaryEntry.Key;
+
+                    if (tmpUser.ClientId == _clienteSendModel.clientTo.ClientId)
+                    {
+                        this.Send((Socket)dictionaryEntry.Value, _clienteSendModel, Remitente.PrivateUsMessage, true);
+                        break;
+                    }                    
+                }
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+        }
+      
 
         /// Send a object to all users connected
         private void BroadCast(object client, bool salida)
@@ -224,7 +339,7 @@ namespace SocketServer
             }
         }
 
-            /// Send all connected users to the client
+            /// Send all LIST connected users to the client
             private void SendAllUsersToClient(Socket socket)
             {
                 //Creating a list with all the clients
@@ -244,47 +359,30 @@ namespace SocketServer
             }
 
 
-            private void Send(Socket socket, object client, Remitente remitente)
+            private void Send(Socket socket, object client, Remitente remitente, bool success = true)
             {
-                string sendDataClient;
+                string sendDataClient ="";
+                ClientDataModel clientDataModel = new ClientDataModel();
+                List<ClientDataModel> ListOfClientsModel = new List<ClientDataModel>();
                 try
                 {
-                    List<ClientDataModel> ListOfClientsModel = new List<ClientDataModel>();
-
                     if (remitente == Remitente.AllClientsOnline)
                     {
-                        sendDataClient = this.generateBytesToSend(client, remitente, false, "none");
-                        socket.Send(Encoding.ASCII.GetBytes(sendDataClient));
+                        sendDataClient = this.generateBytesToSend(client, remitente, true, "none");
                     }
-                    else if (remitente == Remitente.NewClient_Linked)
+                    else if (remitente == Remitente.NewClient_Linked || remitente == Remitente.ClientConnClosed)
                     {
-                        var moment2 = (ClientDataModel)client;
-                        ListOfClientsModel.Add(moment2);
-                        sendDataClient = this.generateBytesToSend(ListOfClientsModel, remitente, false, "none");
-                        socket.Send(Encoding.ASCII.GetBytes(sendDataClient));
+                        clientDataModel = (ClientDataModel)client;
+                        ListOfClientsModel.Add(clientDataModel);
+                        sendDataClient = this.generateBytesToSend(ListOfClientsModel, remitente, true, "none");
 
-                    }
-                    else if (remitente == Remitente.ClientConnClosed) 
-                    { 
-                        var close = (ClientDataModel)client;
-                        ListOfClientsModel.Add(close);
-                        sendDataClient = this.generateBytesToSend(ListOfClientsModel, remitente, false, "none");
-                        socket.Send(Encoding.ASCII.GetBytes(sendDataClient));
-
-                    }else if(remitente == Remitente.GeneralSvMessage)
+                    } 
+                    else if (remitente == Remitente.GeneralSvMessage || remitente == Remitente.PrivateUsMessage || remitente == Remitente.requesttToServer)
                     {
-                            var toSend = (MessageModel)client;
-                            sendDataClient = this.generateBytesToSend(toSend, remitente, false, "none");
-                            socket.Send(Encoding.ASCII.GetBytes(sendDataClient));
-
+                        var toSend = (MessageModel)client;
+                        sendDataClient = this.generateBytesToSend(toSend, remitente, success, "none");
                     }
-                else if (remitente == Remitente.PrivateUsMessage)
-                {
-                    var toSend = (MessageModel)client;
-                    sendDataClient = this.generateBytesToSend(toSend, remitente, false, "none");
                     socket.Send(Encoding.ASCII.GetBytes(sendDataClient));
-
-                }
             }
                 catch (Exception ex)
                 {
@@ -299,8 +397,13 @@ namespace SocketServer
             private string generateBytesToSend(object client, Remitente remitente, bool success, string Error, Socket to = null)
             {
                 ListUsersModel ListClients;
+                MessageModel badResponseGeneral = new MessageModel();
                 try
                 {
+                    if (!success)
+                    {
+                        throw new InvalidCastException(Error);
+                    }
                     switch (remitente)
                     {
 
@@ -363,15 +466,25 @@ namespace SocketServer
                             clientMessage.NumberOfRecords = 1;
                              return JsonConvert.SerializeObject(clientMessage);
 
-                    case Remitente.PrivateUsMessage:
-                        var tempPrivateMessage = (MessageModel)client;
-                        MessageModel privateMessage = tempPrivateMessage;
-                        privateMessage.Succcess = success;
-                        privateMessage.Error = Error;
-                        privateMessage.ErrorDetail = "";
-                        privateMessage.remitente = remitente.ToString();
-                        privateMessage.NumberOfRecords = 1;
-                        return JsonConvert.SerializeObject(privateMessage);
+                        case Remitente.PrivateUsMessage:
+                            var tempPrivateMessage = (MessageModel)client;
+                            MessageModel privateMessage = tempPrivateMessage;
+                            privateMessage.Succcess = success;
+                            privateMessage.Error = Error;
+                            privateMessage.ErrorDetail = "";
+                            privateMessage.remitente = remitente.ToString();
+                            privateMessage.NumberOfRecords = 1;
+                            return JsonConvert.SerializeObject(privateMessage);
+                    case Remitente.requesttToServer:
+                            var tempRequest = (MessageModel)client;
+                            MessageModel request = tempRequest;
+                            request.Message = "";
+                            request.Succcess = success;
+                            request.Error = Error;
+                            request.ErrorDetail = "None";
+                            request.remitente = remitente.ToString();
+                            request.NumberOfRecords = 1;
+                            return JsonConvert.SerializeObject(request);
 
 
                     default:
@@ -380,8 +493,19 @@ namespace SocketServer
                     }
                 }
                 catch (Exception ex)
-                {                                  
-                    Console.WriteLine(ex.Message + "\nSOURCE\n" + ex.Source + "\nTARGET\n" + ex.TargetSite + "\nSTACKTRACE\n" + ex.StackTrace);
+                {
+
+                    var bad = (MessageModel)client;
+                    badResponseGeneral = bad;
+                    badResponseGeneral.Message = "";
+                    badResponseGeneral.Succcess = false;
+                    badResponseGeneral.Error = ex.Message;
+                    badResponseGeneral.ErrorDetail = ex.StackTrace;
+                    badResponseGeneral.remitente = remitente.ToString();
+                    badResponseGeneral.NumberOfRecords = 0;
+
+
+                Console.WriteLine(ex.Message + "\nSOURCE\n" + ex.Source + "\nTARGET\n" + ex.TargetSite + "\nSTACKTRACE\n" + ex.StackTrace);
                     return null;
                 }
             }

@@ -20,10 +20,9 @@ namespace ClientSocketS
         GeneralSvMessage,
         SendingServerDat,
         ClientConnClosed,
-        PrivateUsMessage
+        PrivateUsMessage,
+        requesttToServer
     }
-
- 
 
 
     public class ClientSocket
@@ -33,7 +32,7 @@ namespace ClientSocketS
         private ServerData serverData;
         private GenerateClientModel ClientU;
         private List<ClientDataModel> ListConnectedClients;
-        private CancellationTokenSource cts;
+        private CancellationTokenSource cts, sts, gts;
         private ClientDataModel UserPrivateChat;
 
 
@@ -46,6 +45,7 @@ namespace ClientSocketS
                 IPAddress addr = Host.AddressList[Host.AddressList.Length - 1];
                 IPEndPoint endPoint = new IPEndPoint(addr, 4404);
                 clienteSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                ListConnectedClients = new List<ClientDataModel>();
                 Console.WriteLine("         Successful configuration");
                 StartClient(endPoint);
                 Console.WriteLine(" \n    ---------------------------------------");
@@ -85,8 +85,20 @@ namespace ClientSocketS
                     else connectAttemps = 10;
                 }
             } while (connectAttemps <10);
-        }   
-
+        }
+        private void ClearCurrentConsoleLineNotConexion(int connectAttemps)
+        {
+            Console.Write("   Unnable to reach conexion to remote server...");
+            Thread.Sleep(2000);
+            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.Write(new string(' ', Console.WindowWidth));
+            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.Write("       Retrying Connection... -> Attemp #" + connectAttemps);
+            Thread.Sleep(2000);
+            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.Write(new string(' ', Console.WindowWidth));
+            Console.SetCursorPosition(0, Console.CursorTop);
+        }
 
         private void Connect(string nameClient)
         {
@@ -104,10 +116,11 @@ namespace ClientSocketS
             }
             FirstConnection();
             Instructions();
-             listenThread = new Thread(() => HearingServer(clienteSocket, cts));
+            sts = new CancellationTokenSource();
+            listenThread = new Thread(() => HearingServer(clienteSocket, sts));
              listenThread.Start();
              cts = new CancellationTokenSource();
-             this.SendMessage(cts);   
+             this.SendMessage(sts);   
         }
 
         public void FirstConnection()
@@ -154,7 +167,7 @@ namespace ClientSocketS
                     }
                     else          
                     {
-                        throw new ArgumentException("Conexxion Perdida");
+                        throw new ArgumentException("Lost connection");
                     }
 
                     string jsonReceived = Encoding.ASCII.GetString(bytesReceivedFromServer, 0, dataFromServer);
@@ -165,8 +178,7 @@ namespace ClientSocketS
                     {
 
                         case Remitente.AllClientsOnline:
-                            ListUsersModel allcLientsOnline = JsonConvert.DeserializeObject<ListUsersModel>(jsonReceived);
-                            ListConnectedClients = new List<ClientDataModel>();
+                            ListUsersModel allcLientsOnline = JsonConvert.DeserializeObject<ListUsersModel>(jsonReceived);                            
                             ListConnectedClients = allcLientsOnline._clientes;
                             Console.WriteLine("\n                                                            //--------------USERS ONLINE------------/");
                             foreach (var client in ListConnectedClients)
@@ -205,18 +217,54 @@ namespace ClientSocketS
 
                         case Remitente.PrivateUsMessage:
                             MessageModel privateMessage = JsonConvert.DeserializeObject<MessageModel>(jsonReceived);
-                            ClientU.status = false;
+
+                            if (privateMessage.Message.Length>1 && privateMessage.Message[0] == '*')
+                            {
+                                gts = new CancellationTokenSource();
+                                cts.Cancel();
+                                listenThread = new Thread(() => HearingServer(clienteSocket, gts));
+                                listenThread.Start();
+
+                            }
+
+                            ClientU.status = privateMessage.clientTo.status;
                             UserPrivateChat = privateMessage.clientFrom;
+
+                            if (privateMessage.Succcess)
+                            {
+
                                 Console.ForegroundColor = ConsoleColor.Cyan;
                                 Console.WriteLine("\n                        *-* PRIVATE - FROM -> " + privateMessage.clientFrom.ClientName);
                                 Console.WriteLine("                                 - - > " + privateMessage.Message + "\n");
-                            Console.ForegroundColor = ConsoleColor.White;
+                                Console.ForegroundColor = ConsoleColor.White;
+                            }
+                            else
+                            {
+                                Console.ForegroundColor = ConsoleColor.Cyan;
+                                Console.WriteLine("                           - - > " + privateMessage.Message + "\n");
+                                Console.ForegroundColor = ConsoleColor.White;
+
+                            }
+                            break;
+
+                        case Remitente.requesttToServer:
+                            MessageModel requestMessage = JsonConvert.DeserializeObject<MessageModel>(jsonReceived);
+                            if (requestMessage.Succcess)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.WriteLine("Connetion Successfull");
+                                Console.ForegroundColor = ConsoleColor.White;
+                            }
+                            else
+                            {
+                                Console.ForegroundColor = ConsoleColor.Red;
+                                Console.WriteLine("Connetion Failed");
+                                Console.ForegroundColor = ConsoleColor.White;
+                            }
                             break;
 
                         default: 
-
                             break;
-
                     }
                   
                 }
@@ -227,7 +275,7 @@ namespace ClientSocketS
                 }
                 catch (System.Net.Sockets.SocketException SockEx)
                 {
-                    Console.WriteLine("Desconexion exitosa");
+                    Console.WriteLine("Desconexion exitosa del servidor");
                     break;
                 }
                 catch (Exception ex)
@@ -241,19 +289,7 @@ namespace ClientSocketS
                 }
             }        
 
-        }
-
-        private void disconnectinPrivateChat(MessageModel message)
-        {
-            Console.WriteLine("Disconnecting From private chat ");
-            message = new MessageModel();
-            message.Message = ClientU.ClientName + "It's Free to talk in a private chat";
-            ClientU.status = true;
-            message.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName, status = ClientU.status };
-            message.clientTo = new ClientDataModel { ClientId = serverData.ServerId, ClientName = serverData.Name };
-            var sendMessage = generateBytesToSend(message, Remitente.PrivateUsMessage, true, "none");
-            clienteSocket.Send(Encoding.ASCII.GetBytes(sendMessage));
-        }
+        }      
            
 
 
@@ -264,25 +300,29 @@ namespace ClientSocketS
             {
                 try
                 {
+                    string messageFromConsole = "";
                     Thread.Sleep(1000);
-                    Console.WriteLine("New Message...");
-                    var messageFromConsole = Console.ReadLine();
+                    if (ClientU.status == true)
+                    {
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine("New Message to general...");
+                       messageFromConsole = Console.ReadLine();
+                    }
+                    else if (ClientU.status == false)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Cyan;
+                        Console.WriteLine("New Message ...");
+                        messageFromConsole = Console.ReadLine();
+                    }
+                     
 
                     if (ClientU.status == false)
                     {
                         if (messageFromConsole.Length > 1 && messageFromConsole.Substring(0, 2) == "-c")
                         {
+                            if (UserPrivateChat != null) disconnectinPrivateChat(_clientMessage);
 
-                            if (UserPrivateChat != null)
-                            {
-                                disconnectinPrivateChat(_clientMessage);
-
-                            }
-
-                            else
-                            {
-                                Console.WriteLine("                  There's no private chat running....");
-                            }
+                            else Console.WriteLine("                  There's no private chat running....");                          
 
                         }
                         else if (messageFromConsole == "exit" || messageFromConsole == "EXIT" || messageFromConsole == "Exit")
@@ -300,7 +340,7 @@ namespace ClientSocketS
                         else
                         {
                             _clientMessage.Message = messageFromConsole;
-                            _clientMessage.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName, status = false };
+                            _clientMessage.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName, status = ClientU.status };
                             _clientMessage.clientTo = UserPrivateChat;
                             var sendMessage = generateBytesToSend(_clientMessage, Remitente.PrivateUsMessage, true, "none");
                             clienteSocket.Send(Encoding.ASCII.GetBytes(sendMessage));
@@ -320,27 +360,30 @@ namespace ClientSocketS
 
                                 var newPrivateChat = messageFromConsole.Split('-');
                                 newPrivateChat[2] = newPrivateChat[2].ToUpper();
-                                Console.WriteLine("Trying connection with -> " + newPrivateChat[2]);
-                                try
+                                if(newPrivateChat[2]== ClientU.ClientName) UserPrivateChat = null;                                
+                                else
                                 {
-                                    UserPrivateChat = ListConnectedClients.Find(z => z.ClientName == newPrivateChat[2]);
+                                    Console.WriteLine("\nTrying connection with -> " + newPrivateChat[2]);
+                                    try
+                                    {
+                                        UserPrivateChat = ListConnectedClients.Find(z => z.ClientName == newPrivateChat[2]);
+                                        Console.WriteLine("Waiting for server response...");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        UserPrivateChat = null;
+                                    }
                                 }
-                                catch (Exception ex)
-                                {
-                                    UserPrivateChat = null;
-                                }
+                                
 
                                 if (UserPrivateChat != null)
                                 {
-                                    _clientMessage.Message = "new private chat initilized with you";
+                                    _clientMessage.Message = "*new private chat initilized with you\n                          Press Enter to in chat";
                                     _clientMessage.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName, status = false };
                                     _clientMessage.clientTo = UserPrivateChat;
                                     var sendMessage = generateBytesToSend(_clientMessage, Remitente.PrivateUsMessage, true, "none");
                                     clienteSocket.Send(Encoding.ASCII.GetBytes(sendMessage));
-                                    ClientU.status = false;
-                                    Console.ForegroundColor = ConsoleColor.Cyan;
-                                    Console.WriteLine("Connetion Successfull");
-                                    Console.ForegroundColor = ConsoleColor.White;
+                                    ClientU.status = false;                                    
                                 }
                                 else
                                 {
@@ -355,7 +398,6 @@ namespace ClientSocketS
                         }
                         else if (messageFromConsole == "exit" || messageFromConsole == "EXIT" || messageFromConsole == "Exit")
                         {
-
                             _clientMessage.Message = "Close connection";
                             _clientMessage.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName };
                             var sendprueba = generateBytesToSend(_clientMessage, Remitente.ClientConnClosed, true, "none");
@@ -379,7 +421,7 @@ namespace ClientSocketS
                 }
                 
             }
-            cts.Cancel();
+            sts.Cancel();
             Thread.Sleep(1000);       
 
         }
@@ -397,7 +439,12 @@ namespace ClientSocketS
                     case Remitente.SendingServerDat:
                         List<ClientDataModel> tempClientList = new List<ClientDataModel>();
                         var castingTocClientModel = (GenerateClientModel)client;                        
-                        ClientDataModel clientTosend = new ClientDataModel { ClientId = castingTocClientModel.ClientId, ClientName = castingTocClientModel.ClientName, status=ClientU.status };
+                        ClientDataModel clientTosend = new ClientDataModel 
+                                                                         { 
+                                                                            ClientId = castingTocClientModel.ClientId, 
+                                                                            ClientName = castingTocClientModel.ClientName, 
+                                                                            status=ClientU.status 
+                                                                         };
                         tempClientList.Add(clientTosend);
                         SendModelClientList = new ListUsersModel();
                         SendModelClientList._clientes = tempClientList;
@@ -437,14 +484,17 @@ namespace ClientSocketS
                         return JsonConvert.SerializeObject(SendModelClientList);
 
                      case Remitente.GeneralSvMessage:
-                       
-                         var tempMessage = (MessageModel)client;
-                        tempMessage.clientTo = new ClientDataModel { ClientId= serverData.ServerId, ClientName= serverData.Name}; 
+                        var tempMessage = (MessageModel)client;
+                        tempMessage.clientTo = new ClientDataModel 
+                                                                { 
+                                                                    ClientId= serverData.ServerId, 
+                                                                    ClientName= serverData.Name
+                                                                }; 
                          tempMessage.Succcess = success;
-                        tempMessage.Error = Error;
-                        tempMessage.ErrorDetail = "";
-                        tempMessage.remitente = remitente.ToString();
-                        tempMessage.NumberOfRecords = 1;
+                         tempMessage.Error = Error;
+                         tempMessage.ErrorDetail = "";
+                         tempMessage.remitente = remitente.ToString();
+                         tempMessage.NumberOfRecords = 1;
                          return JsonConvert.SerializeObject(tempMessage);
                
                     case Remitente.ClientConnClosed:
@@ -477,18 +527,20 @@ namespace ClientSocketS
                 return null;
             }
         }
-        private void ClearCurrentConsoleLineNotConexion(int connectAttemps)
+
+
+
+        private void disconnectinPrivateChat(MessageModel message)
         {
-            Console.Write("   Unnable to reach conexion to remote server...");
-            Thread.Sleep(2000);
-            Console.SetCursorPosition(0, Console.CursorTop);
-            Console.Write(new string(' ', Console.WindowWidth));
-            Console.SetCursorPosition(0, Console.CursorTop);
-            Console.Write("       Retrying Connection... -> Attemp #" + connectAttemps);
-            Thread.Sleep(2000);
-            Console.SetCursorPosition(0, Console.CursorTop);
-            Console.Write(new string(' ', Console.WindowWidth));
-            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.WriteLine("Disconnecting From private chat ");
+            message = new MessageModel();
+            message.Message = "?|"+ClientU.ClientName + "|-c |It's Free to talk in the Public chat";
+            ClientU.status = true;
+            message.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName, status = ClientU.status };
+            message.clientTo = UserPrivateChat;
+            var sendMessage = generateBytesToSend(message, Remitente.PrivateUsMessage, true, "none");
+            clienteSocket.Send(Encoding.ASCII.GetBytes(sendMessage));
+            UserPrivateChat = new ClientDataModel { ClientId = serverData.ServerId, ClientName = serverData.Name };
         }
         private void Instructions()
         {
