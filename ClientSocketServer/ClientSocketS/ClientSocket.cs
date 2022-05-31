@@ -13,18 +13,6 @@ using System.Threading;
 namespace ClientSocketS
 {
 
-    enum Remitente
-    {
-        AllClientsOnline,
-        NewClient_Linked,
-        GeneralSvMessage,
-        SendingServerDat,
-        ClientConnClosed,
-        PrivateUsMessage,
-        requesttToServer
-    }
-
-
     public class ClientSocket
     {
         private Socket clienteSocket;
@@ -36,13 +24,14 @@ namespace ClientSocketS
         private ClientDataModel UserPrivateChat;
 
 
-        public ClientSocket(string nameClient)
+        public ClientSocket(string nameClient, string ip)
         {
             try
             {
                 Console.WriteLine("\n*************************************************\n            Configuring Client");
                 IPHostEntry Host = Dns.GetHostEntry(Dns.GetHostName());
-                IPAddress addr = Host.AddressList[Host.AddressList.Length - 1];
+                IPAddress addr = IPAddress.Parse(ip);   
+
                 IPEndPoint endPoint = new IPEndPoint(addr, 4404);
                 clienteSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 ListConnectedClients = new List<ClientDataModel>();

@@ -9,16 +9,20 @@ namespace ClientSocketS
 {
     public class App
     {
-        public string name { get; set; }
+        public string name;
+        public string ip;
         public App()
         {
             Console.WriteLine("\n********************************************");
             Console.WriteLine("      Welcome to the .NET SERVER CLIENT");
             Console.WriteLine("               ***********");
             Console.WriteLine("  Enter your Username to sign into the server\n");
+            Console.Write("********  SERVER : ÍP -> ");
+            ip = Console.ReadLine();
 
-            Console.Write("********  USERNAME: ");
+            Console.Write("********  USERNAME -> ");
             name = Console.ReadLine();
+
             Console.WriteLine("*********************************************");
             Console.WriteLine("******************Accepted*******************");
             Console.WriteLine("*********************************************");
@@ -49,7 +53,7 @@ namespace ClientSocketS
 
             try
             {
-                ClientSocket client = new(name);
+                ClientSocket client = new(name, ip);
             }catch(Exception ex)
             {
                 Console.WriteLine("-");
