@@ -8,7 +8,11 @@ namespace ClientSocketS
         {
             new App();
             Console.WriteLine("Bye bye");
-            Console.ReadKey();
+            try {
+                Console.ReadKey();
+            }catch (Exception exception){
+
+            }
         }
     }
 }

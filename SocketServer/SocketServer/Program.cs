@@ -6,8 +6,13 @@ namespace SocketServer
         static void Main(string[] args)
         {
             ServerSocket server = new ServerSocket();
-            Console.WriteLine("SERVER VERSION 0.9.4\n");
-            Console.ReadKey();
+            Console.WriteLine("SERVER VERSION 1.0.0\n");
+            try {
+                Console.ReadKey();
+            }catch (Exception exception){
+
+            }
+            
         }
     }
 }

@@ -26,24 +26,25 @@ namespace ClientSocketS
             Console.Clear();
 
             int time = 150;
-            string[] welcome = new string[10];
+            string[] welcome = new string[11];
             welcome[0] = "********************************************";
             welcome[1] = "*****************WELCOME********************";
             welcome[2] = "*******************TO***********************";
             welcome[3] = "**************.NET SERVER*******************";
             welcome[4] = "********************************************";
-            welcome[5] = "*************VERSION 0.9.4******************";
-            welcome[6] = "*******MAY - 30 - 2022 03:22 AM ************";
+            welcome[5] = "*************VERSION 1.0.0 *****************";
+            welcome[6] = "*******JUNE - 01 - 2022 03:27 AM ***********";
             welcome[7] = "********************************************";
-            welcome[8] = "********made by Ing. Kevin camargo**********";
+            welcome[8] = "*******MADE BY  ENGR. KEVIN CAMARGO*********";
             welcome[9] = "********************************************";
+            welcome[10]= "********************************************";
             for (int i = 0; i < welcome.Length; i++)
             {
                 Console.WriteLine(welcome[i]);
                 Thread.Sleep(time);
             }
 
-            Thread.Sleep(time * 4);
+            Thread.Sleep(time * 5);
             Console.Clear();
 
             try
