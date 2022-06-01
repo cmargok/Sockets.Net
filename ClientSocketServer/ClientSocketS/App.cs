@@ -17,7 +17,7 @@ namespace ClientSocketS
             Console.WriteLine("      Welcome to the .NET SERVER CLIENT");
             Console.WriteLine("               ***********");
             Console.WriteLine("  Enter your Username to sign into the server\n");
-            Console.Write("********  SERVER : ÍP -> ");
+            Console.Write("********  SERVER : IP -> ");
             ip = Console.ReadLine();
 
             Console.Write("********  USERNAME -> ");

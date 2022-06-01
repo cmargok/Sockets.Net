@@ -19,6 +19,7 @@ namespace SocketServer
             private Dictionary<Guid, Guid> ListUsersInPrivateChat;
             private Guid Server_Id;
             private ServerData serverData;
+        private readonly string serverIP;
             /*
              * generando informacion para uso del servidor
              * isntanciando los objetos necesarios para su funcionamiento*/
@@ -27,11 +28,12 @@ namespace SocketServer
                 try
                     {
                     IPAddress addr = IPAddress.Parse("0.0.0.0");
+                    serverIP = SerachServerIPInternal();
                     IPEndPoint endPoint = new IPEndPoint(addr, 4404);
                     socketServer = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                     Console.WriteLine("         MADE BY  ENGR. KEVIN CAMARGO\n\n********************************************\n            Configuring Server");                    
-                    usersTable = new Hashtable();
-                    ListUsersInPrivateChat = new Dictionary<Guid, Guid>();
+                    usersTable = new Hashtable(); //client / socket
+                    ListUsersInPrivateChat = new Dictionary<Guid, Guid>(); //id cliente, id llega
                     Server_Id = Guid.NewGuid();
                     serverData = new ServerData { ServerId = Server_Id,  Name = ".NET SERVER", };
                     socketServer.Bind(endPoint);
@@ -44,7 +46,7 @@ namespace SocketServer
                         Console.Write("\r                  {0}    ", i + "%"); Thread.Sleep(3);
                     }
                     Thread.Sleep(80);
-                    Console.WriteLine("\nID ->"+serverData.ServerId+"\n         Success Configuration\n             Server Running\n********************************************\n");                
+                    Console.WriteLine("\n       SERVER IP -> " + serverIP+"\n         Success Configuration\n             Server Running\n********************************************\n");                
 
                 }
                 catch (Exception ex)
@@ -52,8 +54,7 @@ namespace SocketServer
                     Console.WriteLine("CONFIGURATING SERVER ERROR\n"+ex.Message +  "\nSTACKTRACE\n" + ex.StackTrace);
                 }
             }
-                  //poniendo el servidor a escuchar cualquier conexion entrantes
-            //Group S functions
+                  //poniendo el servidor a escuchar cualquier conexion entrantes           
             private void Listen()
             {
                 Socket clientSocket;
@@ -73,7 +74,7 @@ namespace SocketServer
                     this.usersTable.Add(client._clientes[0], NewClientConnected);
 
                     if (usersTable.Count > 1) this.BroadCast(client._clientes[0], false);
-
+                    //envia la lista 
                     this.SendAllUsersToClient(NewClientConnected);
 
                     while (true)
@@ -522,6 +523,19 @@ namespace SocketServer
                 }
                 Console.ForegroundColor = ConsoleColor.White;
 
+            }
+            private string SerachServerIPInternal()
+            {
+            IPHostEntry Host = Dns.GetHostEntry(Dns.GetHostName());
+                foreach (var i in Host.AddressList)
+                    {                    
+                    var temp = i.ToString();
+                    if (temp[0] == '1')
+                    {
+                        return temp;
+                    }                   
+                }
+                return null;
             }
     }    
 }

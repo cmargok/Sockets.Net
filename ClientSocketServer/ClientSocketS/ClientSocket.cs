@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Models;
 using Newtonsoft.Json;
-using Models;
+using System;
+using System.Collections.Generic;
 using System.Net;
-using System.Text.Json;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
 namespace ClientSocketS
@@ -22,7 +19,7 @@ namespace ClientSocketS
         private List<ClientDataModel> ListConnectedClients;
         private CancellationTokenSource cts, sts, gts;
         private ClientDataModel UserPrivateChat;
-
+        private readonly string serverIP;
 
         public ClientSocket(string nameClient, string ip)
         {
@@ -30,7 +27,8 @@ namespace ClientSocketS
             {
                 Console.WriteLine("\n*************************************************\n            Configuring Client");
                 IPHostEntry Host = Dns.GetHostEntry(Dns.GetHostName());
-                IPAddress addr = IPAddress.Parse(ip);   
+                serverIP = ip;
+                IPAddress addr = IPAddress.Parse(serverIP);   
 
                 IPEndPoint endPoint = new IPEndPoint(addr, 4404);
                 clienteSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -122,8 +120,8 @@ namespace ClientSocketS
                 ServerDataResponse serverDataResponse = JsonConvert.DeserializeObject<ServerDataResponse>(messageReceived);
                 serverData = serverDataResponse.ServerData;
                 Console.WriteLine("         Server:  -> " + serverData.Name +
-                                    "\nID: -> " + serverData.ServerId
-                                    + "\n          Clients on chat -> "
+                                    "\n       SERVER IP -> " + serverIP
+                                    + "\n         Users Connected -> "
                                     + serverData.ClientCount);
 
                 Console.WriteLine("     ---------------------------------------");
@@ -523,7 +521,7 @@ namespace ClientSocketS
         {
             Console.WriteLine("Disconnecting From private chat ");
             message = new MessageModel();
-            message.Message = "?|"+ClientU.ClientName + "|-c |It's Free to talk in the Public chat";
+            message.Message = "?|"+ClientU.ClientName + "|-c |Chat released";
             ClientU.status = true;
             message.clientFrom = new ClientDataModel { ClientId = ClientU.ClientId, ClientName = ClientU.ClientName, status = ClientU.status };
             message.clientTo = UserPrivateChat;

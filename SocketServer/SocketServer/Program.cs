@@ -10,7 +10,7 @@ namespace SocketServer
             try {
                 Console.ReadKey();
             }catch (Exception exception){
-
+                Console.WriteLine(@"\_(o.O)_/");
             }
             
         }
