@@ -1,4 +1,17 @@
-﻿using Models;
+﻿// ***********************************************************************
+// Assembly         : ClientSocketS
+// Author           : dykey
+// Created          : 05-25-2022
+//
+// Last Modified By : dykey
+// Last Modified On : 05-31-2022
+// ***********************************************************************
+// <copyright file="ClientSocket.cs" company="ClientSocketS">
+//     Copyright (c) . All rights reserved.
+// </copyright>
+// <summary></summary>
+// ***********************************************************************
+using Models;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -10,17 +23,49 @@ using System.Threading;
 namespace ClientSocketS
 {
 
+    /// <summary>
+    /// Class ClientSocket.
+    /// </summary>
     public class ClientSocket
     {
+        /// <summary>
+        /// The cliente socket
+        /// </summary>
         private Socket clienteSocket;
+        /// <summary>
+        /// The listen thread
+        /// </summary>
         private Thread listenThread;
+        /// <summary>
+        /// The server data
+        /// </summary>
         private ServerData serverData;
+        /// <summary>
+        /// The client u
+        /// </summary>
         private GenerateClientModel ClientU;
+        /// <summary>
+        /// The list connected clients
+        /// </summary>
         private List<ClientDataModel> ListConnectedClients;
+        /// <summary>
+        /// The CTS
+        /// </summary>
         private CancellationTokenSource cts, sts, gts;
+        /// <summary>
+        /// The user private chat
+        /// </summary>
         private ClientDataModel UserPrivateChat;
+        /// <summary>
+        /// The server ip
+        /// </summary>
         private readonly string serverIP;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ClientSocket"/> class.
+        /// </summary>
+        /// <param name="nameClient">The name client.</param>
+        /// <param name="ip">The ip.</param>
         public ClientSocket(string nameClient, string ip)
         {
             try
@@ -48,6 +93,10 @@ namespace ClientSocketS
 
         }
 
+        /// <summary>
+        /// Starts the client.
+        /// </summary>
+        /// <param name="endPoint">The end point.</param>
         public void StartClient(IPEndPoint endPoint)
         {
             Console.WriteLine("           Connenting To server");
@@ -73,6 +122,10 @@ namespace ClientSocketS
                 }
             } while (connectAttemps <10);
         }
+        /// <summary>
+        /// Clears the current console line not conexion.
+        /// </summary>
+        /// <param name="connectAttemps">The connect attemps.</param>
         private void ClearCurrentConsoleLineNotConexion(int connectAttemps)
         {
             Console.Write("   Unnable to reach conexion to remote server...");
@@ -87,6 +140,10 @@ namespace ClientSocketS
             Console.SetCursorPosition(0, Console.CursorTop);
         }
 
+        /// <summary>
+        /// Connectsto the specified socket server.
+        /// </summary>
+        /// <param name="nameClient">The name client.</param>
         private void Connect(string nameClient)
         {
             try
@@ -110,6 +167,9 @@ namespace ClientSocketS
              this.SendMessage(sts);   
         }
 
+        /// <summary>
+        /// Firsts the connection.
+        /// </summary>
         public void FirstConnection()
         {
             try
@@ -136,9 +196,15 @@ namespace ClientSocketS
             }
           
         }
-        
-       
-        
+
+
+
+        /// <summary>
+        /// Hearings the server.
+        /// </summary>
+        /// <param name="obj">The object.</param>
+        /// <param name="ctts">The CTTS.</param>
+        /// <exception cref="System.ArgumentException">Lost connection</exception>
         public void HearingServer(Object obj, CancellationTokenSource ctts)
         {
             Socket so = (Socket)obj;
@@ -276,10 +342,14 @@ namespace ClientSocketS
                 }
             }        
 
-        }      
-           
+        }
 
 
+
+        /// <summary>
+        /// Sends the message.
+        /// </summary>
+        /// <param name="ctts">The CTTS.</param>
         public void SendMessage(CancellationTokenSource ctts)
         {
             MessageModel _clientMessage = new MessageModel(); ;
@@ -413,6 +483,15 @@ namespace ClientSocketS
 
         }
 
+        /// <summary>
+        /// Generates the bytes to send.
+        /// </summary>
+        /// <param name="client">The client.</param>
+        /// <param name="remitente">The remitente.</param>
+        /// <param name="success">if set to <c>true</c> [success].</param>
+        /// <param name="Error">The error.</param>
+        /// <param name="to">To.</param>
+        /// <returns>System.String.</returns>
         private string generateBytesToSend(object client, Remitente remitente, bool success, string Error, Socket to = null)
         {
             ListUsersModel SendModelClientList;
@@ -517,6 +596,10 @@ namespace ClientSocketS
 
 
 
+        /// <summary>
+        /// Disconnectins the private chat.
+        /// </summary>
+        /// <param name="message">The message.</param>
         private void disconnectinPrivateChat(MessageModel message)
         {
             Console.WriteLine("Disconnecting From private chat ");
@@ -529,6 +612,9 @@ namespace ClientSocketS
             clienteSocket.Send(Encoding.ASCII.GetBytes(sendMessage));
             UserPrivateChat = new ClientDataModel { ClientId = serverData.ServerId, ClientName = serverData.Name };
         }
+        /// <summary>
+        /// Instructionses this instance.
+        /// </summary>
         private void Instructions()
         {
             Console.WriteLine("*******************************************************\n" +

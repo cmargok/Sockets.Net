@@ -10,7 +10,6 @@ namespace Models
     {
         public Guid ClientId { get; set; }
         public string ClientName { get; set; }
-
         public bool status { get; set; }
 
         public GenerateClientModel(string name)

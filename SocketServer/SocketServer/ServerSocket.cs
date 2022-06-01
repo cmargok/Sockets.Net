@@ -1,29 +1,67 @@
-﻿using Models;
+﻿// ***********************************************************************
+// Assembly         : SocketServer
+// Author           : Kevin Camargo
+// Created          : 05-25-2022
+//
+// Last Modified By : dykey
+// Last Modified On : 05-31-2022
+// ***********************************************************************
+// <copyright file="ServerSocket.cs" company="SocketServer">
+//     Copyright (c) . All rights reserved.
+// </copyright>
+// <summary></summary>
+// ***********************************************************************
+using Models;
 using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
 namespace SocketServer
-{          
-        public class ServerSocket
+{
+
+    /// <summary>
+    /// Class ServerSocket.
+    /// </summary>
+    public class ServerSocket
         {
-            private Socket socketServer;
-            private Thread ListeningThread;
-            private Hashtable usersTable;
-            private Dictionary<Guid, Guid> ListUsersInPrivateChat;
-            private Guid Server_Id;
-            private ServerData serverData;
+        /// <summary>
+        /// The socket server
+        /// </summary>
+        private Socket socketServer;
+        /// <summary>
+        /// The listening thread
+        /// </summary>
+        private Thread ListeningThread;
+        /// <summary>
+        /// The users table with information user-socket
+        /// </summary>
+        private Hashtable usersTable;
+        /// <summary>
+        /// The list users in private chat
+        /// </summary>
+        private Dictionary<Guid, Guid> ListUsersInPrivateChat;
+        /// <summary>
+        /// The server identifier
+        /// </summary>
+        private Guid Server_Id;
+        /// <summary>
+        /// The server data combo box
+        /// </summary>
+        private ServerData serverData;
+        /// <summary>
+        /// The server private ip
+        /// </summary>
         private readonly string serverIP;
-            /*
-             * generando informacion para uso del servidor
-             * isntanciando los objetos necesarios para su funcionamiento*/
-            public ServerSocket()
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ServerSocket"/> class.
+        /// </summary>
+        public ServerSocket()
                 {
                 try
                     {
@@ -54,8 +92,11 @@ namespace SocketServer
                     Console.WriteLine("CONFIGURATING SERVER ERROR\n"+ex.Message +  "\nSTACKTRACE\n" + ex.StackTrace);
                 }
             }
-                  //poniendo el servidor a escuchar cualquier conexion entrantes           
-            private void Listen()
+
+        /// <summary>
+        /// Put the server itself to receive any socket connection
+        /// </summary>
+        private void Listen()
             {
                 Socket clientSocket;
                 while (true)
@@ -65,7 +106,12 @@ namespace SocketServer
                     ListeningThread.Start();
                 }
             }
-            private void ListenClient(Socket NewClientConnected)
+
+        /// <summary>
+        /// When a new connection is commming a new thread is open and the message from the client is managed
+        /// </summary>
+        /// <param name="NewClientConnected">Creates new clientconnected.</param>
+        private void ListenClient(Socket NewClientConnected)
             {
                 object received;
                 var client = ResponseToNewClientConnection(NewClientConnected);
@@ -100,7 +146,13 @@ namespace SocketServer
                     Console.WriteLine(ex.Message + "\nSOURCE\n" + ex.Source + "\nTARGET\n" + ex.TargetSite + "\nSTACKTRACE\n" + ex.StackTrace);
                 }
             }
-            private object Receive(Socket socket, bool FirstConnection = false)
+
+        /// <summary>
+        /// Receives the specified socket and maps throught the specific model.
+        /// </summary>
+        /// <param name="socket">The socket.</param>
+        /// <param name="FirstConnection">if set to <c>true</c> [first connection].</param>        
+        private object Receive(Socket socket, bool FirstConnection = false)
             {
 
                 byte[] buffer = new byte[2048];
@@ -135,7 +187,13 @@ namespace SocketServer
                 }
 
             }
-            private ListUsersModel NewUserConnectionSucces(string dataClient)
+
+        /// <summary>
+        /// Creates a new user, and send the signal to send to all clients the list of connected clients.
+        /// </summary>
+        /// <param name="dataClient">The data client.</param>
+        /// <returns>ListUsersModel.</returns>
+        private ListUsersModel NewUserConnectionSucces(string dataClient)
             {
                 ListUsersModel firstConnection = JsonConvert.DeserializeObject<ListUsersModel>(dataClient);
 
@@ -147,7 +205,15 @@ namespace SocketServer
                 }
                 return firstConnection;
             }
-            private bool IsMessageModel(object received, ListUsersModel client, Socket NewClientConnected)
+
+        /// <summary>
+        /// Determines whether [is message model] [the specified received] to send to public, private or kill a chat
+        /// </summary>
+        /// <param name="received">The received.</param>
+        /// <param name="client">The client.</param>
+        /// <param name="NewClientConnected">Creates new clientconnected.</param>
+        /// <returns><c>true</c> if [is message model] [the specified received]; otherwise, <c>false</c>.</returns>
+        private bool IsMessageModel(object received, ListUsersModel client, Socket NewClientConnected)
                 {
                     var message = (MessageModel)received;
                     if (message.remitente == Remitente.ClientConnClosed.ToString())
@@ -189,8 +255,14 @@ namespace SocketServer
                     }
                     return true;
 
-                }            
-            private void CheckUserAvailability(MessageModel message, Socket NewClientConnected)
+                }
+
+        /// <summary>
+        /// Checks the user availability to start a private chat.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="NewClientConnected">Creates new clientconnected.</param>
+        private void CheckUserAvailability(MessageModel message, Socket NewClientConnected)
                 {
                     if (!ListUsersInPrivateChat.ContainsKey(message.clientTo.ClientId) && !ListUsersInPrivateChat.ContainsValue(message.clientTo.ClientId))
                     {
@@ -217,7 +289,13 @@ namespace SocketServer
                     }
 
                 }
-            private ListUsersModel ResponseToNewClientConnection(Socket NewClientConnected)
+
+        /// <summary>
+        /// Responses to new client connection.
+        /// </summary>
+        /// <param name="NewClientConnected">Creates new clientconnected.</param>
+        /// <returns>ListUsersModel.</returns>
+        private ListUsersModel ResponseToNewClientConnection(Socket NewClientConnected)
             {
                 object received;
                 try
@@ -239,11 +317,25 @@ namespace SocketServer
                     return null;
                 }
             }
-            private void ResponsePrivateChatRequest(MessageModel response, Socket socket, bool success)
+        
+        /// <summary>
+        /// Responses the private chat request.
+        /// </summary>
+        /// <param name="response">The response.</param>
+        /// <param name="socket">The socket.</param>
+        /// <param name="success">if set to <c>true</c> [success].</param>
+        /// 
+        private void ResponsePrivateChatRequest(MessageModel response, Socket socket, bool success)
             {
                 this.Send(socket, response, Remitente.requesttToServer, success);
             }
-            private void killPrivateChat(MessageModel message, string[] requestDisposeMessage)
+
+        /// <summary>
+        /// Kills the private chat.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="requestDisposeMessage">The request dispose message.</param>
+        private void killPrivateChat(MessageModel message, string[] requestDisposeMessage)
             {
                 PrintItInColor("Private Chat Dispose Request", FontColors.blue);
                 message.Message = "Private Chat Disposed";
@@ -257,7 +349,14 @@ namespace SocketServer
                 PrintItInColor("Private Chat Disposed", FontColors.green);
 
             }
-            private void UserDisconnected(MessageModel message, ListUsersModel client, Socket NewClientConnected)
+        
+        /// <summary>
+        /// Start actions when a user close the connection "disconect".
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="client">The client.</param>
+        /// <param name="NewClientConnected">Creates new clientconnected.</param>
+        private void UserDisconnected(MessageModel message, ListUsersModel client, Socket NewClientConnected)
             {
                 Console.WriteLine("\n**** -> USER DISCONNECTED -> " + message.clientFrom.ClientName);
                 var clientT = message.clientFrom;
@@ -266,7 +365,14 @@ namespace SocketServer
                 this.SendAllUsersToClient(NewClientConnected);
                 NewClientConnected.Close();
             }
-            private void SendMessage(MessageModel _clienteSendModel, bool sendToALL, bool disposeChat = false)
+        
+        /// <summary>
+        /// Sends the message. into aprivate or a public chat
+        /// </summary>
+        /// <param name="_clienteSendModel">The cliente send model.</param>
+        /// <param name="sendToALL">if set to <c>true</c> [send to all].</param>
+        /// <param name="disposeChat">if set to <c>true</c> [dispose chat].</param>
+        private void SendMessage(MessageModel _clienteSendModel, bool sendToALL, bool disposeChat = false)
             {
                 //aqui debo especificar si el mensaje es all
                 ClientDataModel tmpUser;
@@ -299,8 +405,13 @@ namespace SocketServer
                     }
                 }
             }
-            /// Send a object to all users connected
-            private void BroadCast(object client, bool salida)
+
+        /// <summary>
+        /// Broadcast - send an alert when an user arrives o leaves the chat.
+        /// </summary>
+        /// <param name="client">The client.</param>
+        /// <param name="salida">if set to <c>true</c> [salida].</param>
+        private void BroadCast(object client, bool salida)
             {
                 if (!salida)
                 {
@@ -323,8 +434,12 @@ namespace SocketServer
                     }
                 }
             }
-                /// Send all LIST connected users to the client
-            private void SendAllUsersToClient(Socket socket)
+
+        /// <summary>
+        /// Sends all users connected to client.
+        /// </summary>
+        /// <param name="socket">The socket.</param>
+        private void SendAllUsersToClient(Socket socket)
                 {
                     //Creating a list with all the clients
                     List<ClientDataModel> ClientsONLINE = new();
@@ -337,8 +452,13 @@ namespace SocketServer
                     {
                         this.Send((Socket)dictionaryEntry.Value, ClientsONLINE, Remitente.AllClientsOnline);
                     }
-                }        
-            private void AlertPrivateChatDisposeToUsers(MessageModel _clienteSendModel)
+                }
+       
+        /// <summary>
+        /// Alerts the private chat dispose to users.
+        /// </summary>
+        /// <param name="_clienteSendModel">The cliente send model.</param>
+        private void AlertPrivateChatDisposeToUsers(MessageModel _clienteSendModel)
             {
                 ClientDataModel tmpUser;
                 bool from = false;
@@ -364,7 +484,15 @@ namespace SocketServer
                     }
                 }
             }
-            private void Send(Socket socket, object client, Remitente remitente, bool success = true)
+       
+        /// <summary>
+        /// Sends to the specified and specific socket.
+        /// </summary>
+        /// <param name="socket">The socket.</param>
+        /// <param name="client">The client.</param>
+        /// <param name="remitente">The remitente.</param>
+        /// <param name="success">if set to <c>true</c> [success].</param>
+        private void Send(Socket socket, object client, Remitente remitente, bool success = true)
                 {
                     string sendDataClient ="";
                     try
@@ -391,8 +519,18 @@ namespace SocketServer
                         socket.Send(Encoding.ASCII.GetBytes(sendDataClient));
                         Console.WriteLine(ex.Message + "\nSTACKTRACE\n" + ex.StackTrace);
                     }
-                }           
-            private string GenerateBytesToSend(object client, Remitente remitente, bool success, string Error = "Null")
+                }
+        
+        /// <summary>
+        /// Generates the bytes to send beginning from the type of remitente
+        /// </summary>
+        /// <param name="client">The client.</param>
+        /// <param name="remitente">The remitente.</param>
+        /// <param name="success">if set to <c>true</c> [success].</param>
+        /// <param name="Error">The error.</param>
+        /// <returns>System.String.</returns>
+        /// <exception cref="System.InvalidCastException"></exception>
+        private string GenerateBytesToSend(object client, Remitente remitente, bool success, string Error = "Null")
                 {
                     string generalResponse = "";
                     try
@@ -446,12 +584,16 @@ namespace SocketServer
                           return generalResponse;
                     }
                 }
-            /// <summary>
-            /// Receive all the serialized object
-            /// </summary>
-            /// <param name="socket">Socket that receive the object</param>
-            /// <returns>Object received from client</returns>
-            private string AddListResponse(object client, Remitente remitente, bool success, string Error)
+        
+        /// <summary>
+        /// private method to generate , combine and compile the list of clients to send.
+        /// </summary>
+        /// <param name="client">The client.</param>
+        /// <param name="remitente">The remitente.</param>
+        /// <param name="success">if set to <c>true</c> [success].</param>
+        /// <param name="Error">The error.</param>
+        /// <returns>System.String.</returns>
+        private string AddListResponse(object client, Remitente remitente, bool success, string Error)
             {
                 ListUsersModel ListClients = new();
                 List<ClientDataModel> castingToList = (List<ClientDataModel>)client;
@@ -463,7 +605,16 @@ namespace SocketServer
                 ListClients.NumberOfRecords = ListClients._clientes.Count;
                 return JsonConvert.SerializeObject(ListClients);
             }
-            private string ServerDataResponse(object client, Remitente remitente, bool success, string Error)
+       
+        /// <summary>
+        /// Servers the data response.
+        /// </summary>
+        /// <param name="client">The client.</param>
+        /// <param name="remitente">The remitente.</param>
+        /// <param name="success">if set to <c>true</c> [success].</param>
+        /// <param name="Error">The error.</param>
+        /// <returns>System.String.</returns>
+        private string ServerDataResponse(object client, Remitente remitente, bool success, string Error)
             {
                 ServerDataResponse serverDataResponse = new();
                 ServerData tempServerData = (ServerData)client;
@@ -477,7 +628,17 @@ namespace SocketServer
                 return JsonConvert.SerializeObject(serverDataResponse);
 
             }
-            private string MessageResponse(object client, Remitente remitente, bool success, string Error, bool request = false)
+       
+        /// <summary>
+        /// Messages the response.
+        /// </summary>
+        /// <param name="client">The client.</param>
+        /// <param name="remitente">The remitente.</param>
+        /// <param name="success">if set to <c>true</c> [success].</param>
+        /// <param name="Error">The error.</param>
+        /// <param name="request">if set to <c>true</c> [request].</param>
+        /// <returns>System.String.</returns>
+        private string MessageResponse(object client, Remitente remitente, bool success, string Error, bool request = false)
             {
                 var message = (MessageModel)client;
                 MessageModel sendMessage = message;
@@ -492,7 +653,13 @@ namespace SocketServer
                 sendMessage.NumberOfRecords = 1;
                 return JsonConvert.SerializeObject(sendMessage);
             }
-            private void PrintItInColor(string print, FontColors color)
+       
+        /// <summary>
+        /// Prints the color of the text in the console.
+        /// </summary>
+        /// <param name="print">The print.</param>
+        /// <param name="color">The color.</param>
+        private void PrintItInColor(string print, FontColors color)
             {
                 switch (color)
                 {
@@ -524,7 +691,12 @@ namespace SocketServer
                 Console.ForegroundColor = ConsoleColor.White;
 
             }
-            private string SerachServerIPInternal()
+
+        /// <summary>
+        /// Seraches the ip internal to run the server.
+        /// </summary>
+        /// <returns>System.String.</returns>
+        private string SerachServerIPInternal()
             {
             IPHostEntry Host = Dns.GetHostEntry(Dns.GetHostName());
                 foreach (var i in Host.AddressList)
