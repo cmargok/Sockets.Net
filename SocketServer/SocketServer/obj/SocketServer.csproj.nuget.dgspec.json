@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\SocketServer\\SocketServer.csproj": {}
+    "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\SocketServer\\SocketServer.csproj": {}
   },
   "projects": {
-    "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\Models.csproj": {
+    "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\Models.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\Models.csproj",
+        "projectUniqueName": "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\Models.csproj",
         "projectName": "Models",
-        "projectPath": "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\Models.csproj",
-        "packagesPath": "C:\\Users\\dykey\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\obj\\",
+        "projectPath": "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\Models.csproj",
+        "packagesPath": "C:\\Users\\cmarg\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\dykey\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\cmarg\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -64,24 +64,24 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.203\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.302\\RuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\SocketServer\\SocketServer.csproj": {
+    "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\SocketServer\\SocketServer.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\SocketServer\\SocketServer.csproj",
+        "projectUniqueName": "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\SocketServer\\SocketServer.csproj",
         "projectName": "SocketServer",
-        "projectPath": "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\SocketServer\\SocketServer.csproj",
-        "packagesPath": "C:\\Users\\dykey\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\SocketServer\\obj\\",
+        "projectPath": "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\SocketServer\\SocketServer.csproj",
+        "packagesPath": "C:\\Users\\cmarg\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\SocketServer\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\dykey\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\cmarg\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -96,8 +96,8 @@
           "net6.0": {
             "targetAlias": "net6.0",
             "projectReferences": {
-              "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\Models.csproj": {
-                "projectPath": "C:\\Users\\dykey\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\Models.csproj"
+              "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\Models.csproj": {
+                "projectPath": "C:\\Users\\cmarg\\Documents\\cmargok\\Sockets\\SocketServer\\Models\\Models.csproj"
               }
             }
           }
@@ -126,7 +126,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.203\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.302\\RuntimeIdentifierGraph.json"
         }
       }
     }
